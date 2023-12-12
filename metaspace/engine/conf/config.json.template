@@ -1,0 +1,200 @@
+{
+  "bottle": {
+    "host": "localhost",
+    "port": 5123,
+    "debug": false,
+    "server": "cherrypy"
+  },
+  "redis": {{ sm_redis | to_json }},
+  "db": {
+    "host": "{{ sm_postgres_host }}",
+    "database": "sm",
+    "user": "sm",
+    "password": "{{ sm_postgres_password }}"
+  },
+  "elasticsearch": {
+    "index": "sm",
+    "dataset_index": "dataset",
+    "annotation_index": "annotation",
+    "host": "{{ sm_es_host }}",
+    "port": "{{ sm_es_port }}",
+    "user": "{{ sm_es_user }}",
+    "password": "{{ sm_es_password }}"
+  },
+  "services": {
+    "img_service_url": "{{ sm_img_service_url }}",
+    "img_service_public_url": "{{ web_public_url }}",
+    "off_sample": "{{ off_sample_api_endpoint }}",
+    "web_app_url": "{{ web_public_url }}",
+    "send_email": {{ sm_send_email | to_json }},
+    "update_daemon_threads": 4,
+    "colocalization": true,
+    "ion_thumbnail": true
+  },
+  "rabbitmq": {
+    "host": "{{ rabbitmq_host }}",
+    "user": "sm",
+    "password": "{{ rabbitmq_password }}"
+  },
+  "fs": {
+    "data_path": "/opt/data/metaspace",
+    "spark_data_path": "/tmp/metaspace",
+    "s3_base_path": "{{ sm_s3_path }}"
+  },
+  "spark": {
+    "master": "{{ spark_master_host | default('local[*]') }}",
+    "spark.executor.memory": "16g",
+    "spark.driver.memory": "8g",
+    "spark.driver.maxResultSize": "3g",
+    "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+    "spark.kryoserializer.buffer.max": "512m",
+    "spark.python.worker.memory": "1g",
+    "spark.rdd.compress": true,
+    "spark.ui.showConsoleProgress": false,
+    "spark.sql.execution.arrow.enabled": true,
+    "spark.network.timeout": "360s",
+    "spark.executor.heartbeatInterval": "60s"
+  },
+  "lithops": {
+    "lithops": {
+      "storage_bucket": "{{ sm_lithops_cos_bucket_temp }}",
+      "storage": "ibm_cos",
+      "mode": "serverless",
+      "include_modules": ["engine/sm"],
+      "data_cleaner": true,
+      "data_limit": false,
+      "workers": 1000,
+      "execution_timeout": 7200
+    },
+    "serverless": {
+      "backend": "code_engine",
+      "runtime_timeout": 1200,
+      "runtime_memory": 2048
+    },
+    "standalone": {
+      "backend": "ibm_vpc",
+      "soft_dismantle_timeout": 30,
+      "hard_dismantle_timeout": 7200
+    },
+    "localhost": {},
+    "ibm": {
+      "iam_api_key": "{{ sm_lithops_iam_api_key }}"
+    },
+    "code_engine": {
+      "region": "eu-de",
+      "namespace": "{{ sm_lithops_ce_namespace }}",
+      "runtime": "",
+      "runtime_timeout": 1800,
+      "connection_retries": 10
+    },
+    "ibm_vpc": {
+      "endpoint": "https://eu-de.iaas.cloud.ibm.com",
+      "instance_id": "{{ sm_lithops_vpc_instance_id }}",
+      "floating_ip": "{{ sm_lithops_vpc_instance_ip }}",
+      "ssh_key_filename": "/home/ubuntu/.ssh/ibm_cloud_vpc"
+    },
+    "ibm_cos": {
+      "region": "eu-de",
+      "access_key": "{{ sm_lithops_cos_access_key }}",
+      "secret_key": "{{ sm_lithops_cos_secret_key }}"
+    },
+    "aws": {
+      "access_key_id": "{{ aws_access_key_id }}",
+      "secret_access_key": "{{ aws_secret_access_key }}"
+    },
+    "aws_s3": {
+      "endpoint": "https://s3.{{ aws_region }}.amazonaws.com"
+    },
+    "sm_storage": {
+{#
+Each entry in this block is an array of [Bucket name, Prefix]
+e.g. "imzml": ["my-bucket","files/go/here"] means ImzML files will be stored under cos://my-bucket/files/go/here/
+The Prefix is necessary and should not have a leading or trailing slash
+#}
+      "imzml": ["{{ sm_lithops_cos_bucket_imzml }}", "imzml"],
+      "moldb": ["{{ sm_lithops_cos_bucket_data }}", "moldb"],
+      "centroids": ["{{ sm_lithops_cos_bucket_data }}", "centroids"],
+      "pipeline_cache": ["{{ sm_lithops_cos_bucket_temp }}", "pipeline_cache"]
+    }
+  },
+  "aws": {
+    "aws_access_key_id": "{{ aws_access_key_id }}",
+    "aws_secret_access_key": "{{ aws_secret_access_key }}",
+    "aws_default_region": "{{ aws_region }}"
+  },
+  "slack": {
+    "channel": "{{ slack_channel }}",
+    "webhook_url": "{{ slack_webhook_url }}"
+  },
+  "isotope_storage": {
+    "path": "{{ sm_isotope_storage_path }}"
+  },
+  "logs": {
+    "version": 1,
+    "formatters": {
+      "sm": {
+        "format": "%(asctime)s - %(levelname)s - %(name)s[%(threadName)s] - %(filename)s:%(lineno)d - %(message)s"
+      }
+    },
+    "handlers": {
+        "console_warn": {
+            "class": "logging.StreamHandler",
+            "formatter": "sm",
+            "level": "WARNING"
+        },
+        "console_debug": {
+            "class": "logging.StreamHandler",
+            "formatter": "sm",
+            "level": "DEBUG"
+        },
+        "context_logger": {
+            "class": "sm.engine.utils.log_capture.ContextLogHandler",
+            "formatter": "sm",
+            "level": "INFO"
+        }
+    },
+    "root": {
+      "handlers": ["console_debug", "context_logger"],
+      "level": "WARNING"
+    },
+    "loggers": {
+        "engine": {
+            "level": "INFO"
+        },
+        "engine.db": {
+            "level": "INFO"
+        },
+        "engine.lithops-wrapper": {
+            "level": "DEBUG"
+        },
+        "lithops": {
+            "level": "INFO"
+        },
+        "api": {
+            "level": "INFO"
+        },
+        "update-daemon": {
+            "level": "INFO"
+        },
+        "annotate-daemon": {
+            "level": "INFO"
+        },
+        "lithops-daemon": {
+            "level": "DEBUG"
+        },
+        "annotation-pipeline": {
+            "level": "INFO"
+        }
+    }
+  },
+  "ds_config_defaults": {
+    "adducts": {{ sm_default_adducts | to_json }}
+  },
+  "image_storage": {
+    "bucket": "{{ sm_image_storage_bucket }}",
+    "raw_img_bucket": "{{ sm_graphql_s3_upload_bucket }}"
+  },
+  "imzml_browser_storage": {
+    "bucket": "{{ sm_imzml_browser_bucket }}"
+  }
+}

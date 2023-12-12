@@ -1,0 +1,11 @@
+config/*.js
+!config/test.js
+metadata_schema.json
+build/
+tmp/
+temp/
+src/binding.ts
+metadataSchemas/*.json
+metadataSchemas/metadataMapping.js
+health.json
+.eslintcache

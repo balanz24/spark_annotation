@@ -1,0 +1,5 @@
+name: sm38
+dependencies:
+  - python=3.8
+  - libgcc
+  - nomkl

@@ -1,0 +1,189 @@
+type Annotation {
+  id: String!
+
+  dataset: Dataset!
+  sumFormula: String!
+  chemMod: String!      # Empty string means no chem mod
+  neutralLoss: String!  # Empty string means no neutral loss
+  adduct: String!
+  ion: String!          # Formula+adducts+polarity
+  ionFormula: String!   # "Compiled" formula, such that there are no +/-s, each element is only included once, in CHNOPS order
+  databaseDetails: MolecularDB!
+  database: String!  # @deprecated(reason: "This field is deprecated and will be removed. Use databaseDetails instead.")
+  mz: Float!
+  centroidMz: Float!
+  isMono: Boolean
+  countPossibleCompounds(includeIsomers: Boolean = False): Int!
+  possibleCompounds: [Compound!]!
+  fdrLevel: Float
+  msmScore: Float!
+  rhoSpatial: Float
+  rhoSpectral: Float
+  rhoChaos: Float
+
+  metricsJson: String!
+
+  theoreticalPeakMz: [Float!]
+  theoreticalPeakIntensity: [Float!]
+  observedPeakMz: [Float!]
+  observedPeakMzStddev: [Float!]
+
+  isotopeImages: [MzImage!]!
+  isomers: [IsomerAnnotation!]!
+  isobars: [IsobarAnnotation!]!
+
+  peakChartData: String  # JSON
+
+  # Unfortunately Apollo's client-side cache makes it necessary to parameterize colocalizationCoeff so that its values
+  # are consistent between requests. Without this, having multiple queries with different 'colocalizedWith' filters
+  # will cause the values to interfere, e.g. browsing the Annotations page when using a `colocalizedWith` filter
+  # as well as having the "Colocalized With" section open will trigger two queries with different colocalization params
+  # in `allAnnotations`, resulting in different values of colocalizationCoeff for the same annotation.
+  # If `colocalizationCoeffFilter` is null, this will return null, allowing queries to include this field even if it's not
+  # applicable with the current set of filters. Otherwise the values must match the parent `allAnnotations`' filter.
+  colocalizationCoeff(colocalizationCoeffFilter: ColocalizationCoeffFilter): Float
+
+  offSample: Boolean    # false = only on-sample, true = only off-sample
+  offSampleProb: Float  # 0.0 = probably on-sample, 1.0 = probably off-sample
+}
+
+
+type AggregatedAnnotation {
+  ion: String!
+  dbId: Int!
+  datasetIds: [String]
+  annotations: [Annotation]
+}
+
+type CompoundInfoEntry {
+  database: String!
+  url: String
+  # NOTE: CompoundInfoEntry.databaseId is the molecule's ID from the database (e.g. HMDB0000001). It is not the
+  # METASPACE-assigned ID of the database. To get the ID of the database itself, see `Annotation.databaseId`.
+  databaseId: String!
+}
+
+type Compound {
+  name: String!
+  imageURL: String
+  information: [CompoundInfoEntry!]!
+  # TODO: InChi/SMILES, ClassyFire results
+}
+
+type Spectrum {
+  mzs: [Float!]!
+  intensities: [Float!]!
+}
+
+type MzImage {
+  mz: Float
+  url: String
+  totalIntensity: Float!
+  minIntensity: Float!
+  maxIntensity: Float!
+}
+
+type IsomerAnnotation {
+  ion: String!
+}
+
+type IsobarAnnotation {
+  ion: String!
+  ionFormula: String!
+  peakNs: [[Int!]]!
+  msmScore: Float!
+  shouldWarn: Boolean!
+}
+
+type ColocalizationAlgo {
+  id: String!
+  name: String!
+}
+
+enum AnnotationOrderBy {
+  ORDER_BY_MZ
+  ORDER_BY_MSM
+  ORDER_BY_FDR_MSM
+  ORDER_BY_DATASET
+  ORDER_BY_FORMULA
+  ORDER_BY_COLOCALIZATION
+  ORDER_BY_OFF_SAMPLE
+  ORDER_BY_ADDUCT
+  ORDER_BY_GROUP
+  ORDER_BY_DATABASE
+  ORDER_BY_CHAOS
+  ORDER_BY_SPATIAL
+  ORDER_BY_SPECTRAL
+  ORDER_BY_MAX_INT
+  ORDER_BY_TOTAL_INT
+  ORDER_BY_ISOMERS
+  ORDER_BY_ISOBARS
+}
+
+# [min, max) interval
+input NumericRange {
+  min: Float!
+  max: Float!
+}
+
+input AnnotationFilter {
+  databaseId: Int
+  database: String  # @deprecated(reason: "This field will be removed. Use \"databaseId\" instead.")
+  datasetName: String
+  mzFilter: NumericRange
+  termId: Int
+  msmScoreFilter: NumericRange
+  compoundQuery: String
+  fdrLevel: Float
+  pValue: Float
+  sumFormula: String
+  chemMod: String                 # Empty string for 'no chem mod'
+  neutralLoss: String             # Empty string for 'no neutral loss'
+  adduct: String
+  ion: String
+  ionFormula: String
+  colocalizedWith: String         # Should be an ion string (formula+adduct+polarity). Requires DatasetFilter.datasetIds to be set to a specific dataset
+  colocalizationSamples: Boolean  # Requires DatasetFilter.datasetIds to be set to a specific dataset
+  colocalizationAlgo: String
+  offSample: Boolean
+  hasNeutralLoss: Boolean # @deprecated(reason: "Do not depend on this filter - it is intended to only be a temporary measure until a more flexible filter API that supports is-null/non-null queries is built")
+  hasChemMod: Boolean # @deprecated(reason: "Do not depend on this filter - it is intended to only be a temporary measure until a more flexible filter API that supports is-null/non-null queries is built")
+  hasHiddenAdduct: Boolean # @deprecated(reason: "Do not depend on this filter - it is intended to only be a temporary measure until a more flexible filter API that supports multi-value queries is built")
+  isobaricWith: String            # Should be an ionFormula
+  annotationId: String
+}
+
+input ColocalizationCoeffFilter {
+  colocalizedWith: String!
+  colocalizationAlgo: String
+  databaseId: Int
+  database: String  # @deprecated(reason: "This field will be removed. Use \"databaseId\" instead.")
+  fdrLevel: Float
+}
+
+type Query {
+  allAnnotations(orderBy: AnnotationOrderBy = ORDER_BY_MSM,
+                 sortingOrder: SortingOrder = DESCENDING,
+                 offset: Int = 0, limit: Int = 10,
+                 filter: AnnotationFilter = {},
+                 datasetFilter: DatasetFilter = {},
+                 simpleQuery: String): [Annotation]
+
+  allAggregatedAnnotations(orderBy: AnnotationOrderBy = ORDER_BY_MSM,
+                 sortingOrder: SortingOrder = DESCENDING,
+                 filter: AnnotationFilter = {},
+                 datasetFilter: DatasetFilter = {},
+                 simpleQuery: String): [AggregatedAnnotation]
+
+  countAnnotations(filter: AnnotationFilter = {},
+                   datasetFilter: DatasetFilter = {},
+                   simpleQuery: String): Int!
+
+  annotation(id: String!): Annotation
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}

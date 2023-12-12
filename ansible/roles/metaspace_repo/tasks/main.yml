@@ -1,0 +1,139 @@
+---
+
+- name: Create metaspace installation directory
+  become: yes
+  file:
+    path: "{{ metaspace_home }}"
+    state: directory
+    owner: "{{ spark_user }}"
+    group: "{{ spark_user }}"
+
+- name: Check if .git dir exists
+  stat:
+    path: "{{ metaspace_home }}/.git"
+  register: git_dir
+
+- name: Remove all local file changes
+  shell: git reset --hard && git clean -f
+  args:
+    chdir: "{{ metaspace_home }}"
+  when: git_dir.stat.exists
+
+- name: Delete all local and remote branches except for 'master'
+  shell: |
+    git checkout master
+    git remote prune origin
+    git for-each-ref --format '%(refname:short)' refs/heads |
+      grep -v master |
+      xargs --no-run-if-empty git branch -D
+  args:
+    chdir: "{{ metaspace_home }}"
+  when: git_dir.stat.exists and local_deploy is not defined
+
+- name: Pull metaspace "{{ metaspace_branch }}" branch from the repository
+  git:
+    repo: "{{ metaspace_repo_url }}"
+    version: "{{ metaspace_branch }}"
+    dest: "{{ metaspace_home }}"
+    update: yes
+    force: yes
+  when: local_deploy is not defined
+
+- name: Save git version as a variable
+  shell: git rev-parse HEAD
+  args:
+    chdir: "{{ metaspace_home }}"
+  register: metaspace_repo_revision_git
+  when: local_deploy is not defined
+
+- name: Save git version as a variable (local_deploy)
+  shell: echo local_deploy
+  register: metaspace_repo_revision_local
+  when: local_deploy is defined
+
+# Workaround for Ansible not providing an intuitive way to use "register" in branching tasks
+# https://github.com/ansible/ansible/issues/4297
+- name: Merge git version variables
+  set_fact:
+    metaspace_repo_revision: "{{ metaspace_repo_revision_git.stdout if local_deploy is not defined else metaspace_repo_revision_local.stdout }}"
+
+
+# Double check all exclude paths
+- name: Upload local files
+  synchronize:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    rsync_opts: "{{ item.rsync_opts }}"
+  when: local_deploy is defined
+  with_items:
+    - src: "{{ sm_ansible_home }}/"
+      dest: "{{ sm_ansible_home }}/"
+      rsync_opts:
+        - --exclude=.*
+        - --exclude=aws/env
+    - src: "{{ sm_home }}/"
+      dest: "{{ sm_home }}/"
+      rsync_opts:
+        - --exclude=.*
+        - --exclude=conf/*
+        - --exclude=logs/*
+        - --exclude=docker/*
+        - --exclude=docs/*
+    - src: "{{ sm_graphql_home }}/"
+      dest: "{{ sm_graphql_home }}/"
+      rsync_opts:
+        - --exclude='config/*.js'
+        - --exclude='logs/*'
+        - --exclude='dist/*'
+        - --exclude='node_modules/*'
+        - --exclude='.*'
+        - --exclude=aws/env/*
+        - --exclude=aws/files/*
+    - src: "{{ sm_graphql_home }}/"
+      dest: "{{ sm_graphql_home }}/"
+      rsync_opts:
+        - --exclude='config/*.js'
+        - --exclude='logs/*'
+        - --exclude='dist/*'
+        - --exclude='node_modules/*'
+        - --exclude='.*'
+  tags: ['web']
+
+- name: Upload local engine files
+  synchronize:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    rsync_opts: "{{ item.rsync_opts }}"
+  when: local_deploy is defined
+  with_items:
+    - src: "{{ sm_home }}/"
+      dest: "{{ sm_home }}/"
+      rsync_opts:
+        - --exclude=.*
+        - --exclude=conf/*.json
+        - --exclude=logs/*
+        - --exclude=docker/*
+        - --exclude=docs/*
+  tags: [master, slave, web]
+
+- name: Remove vault password path from ansible.cfg
+  lineinfile:
+    dest: "{{ sm_ansible_home }}/aws/ansible.cfg"
+    regexp: ^vault_password_file
+    line: ""
+
+#    - src: "{{ sm_webapp_home }}/"
+#      dest: "{{ sm_webapp_home }}/"
+#      rsync_opts:
+#        - --exclude='config/*.js'
+#        - --exclude=S3/*
+#        - --exclude='logs/*'
+#        - --exclude='dist/*'
+#        - --exclude='node_modules/*'
+#        - --exclude='.*'
+#    - src: "{{ mol_db_home }}/"
+#      dest: "{{ mol_db_home }}/"
+#      rsync_opts:
+#        - --exclude='conf/*'
+#        - --exclude='logs'
+#        - --exclude='.*'

@@ -1,0 +1,60 @@
+---
+# NOTE: Intially the provisioned server doesn't have Python, causing Ansible to fail with an "SSH Error" for most tasks.
+# Only use "raw" tasks before the "Symlink python to python3" step
+
+- name: Run apt-get update
+  become: yes
+  raw: apt-get update
+
+# Include Python 2 here, even though it's not used, to prevent its later installation from overwriting the Python 3 symlink
+- name: Install python-simplejson
+  become: yes
+  raw: apt-get install -y python-simplejson python3-simplejson
+
+- name: Symlink python to python3
+  become: yes
+  raw: "rm -f /usr/bin/python && ln -s /usr/bin/python3 /usr/bin/python"
+
+- name: Symlink pip to pip3
+  become: yes
+  raw: "rm -f /usr/bin/pip && ln -s /usr/bin/pip3 /usr/bin/pip"
+
+- name: Reconfigure buggy ubuntu locales
+  become: yes
+  template: src=../files/locale dest=/etc/default/locale
+    owner=root mode="u=rw,g=r,o=r" force=yes
+
+- name: Create ubuntu user
+  become: yes
+  user:
+    name: ubuntu
+    shell: /bin/bash
+    groups: sudo
+
+- name: Upload ssh key file "{{ pub_key_file }}"
+  become: yes
+  authorized_key: user=ubuntu key="{{ lookup('file', '{{ pub_key_file }}') }}"
+  when: upload_key
+
+- name: Install misc packages
+  become: yes
+  apt:
+    name: ['htop', 'iotop', 'mc', 'gcc', 'git', 'software-properties-common',
+           'python3-pip', 'libssl-dev']
+    state: present
+    update_cache: yes
+
+- name: Update pip
+  become: yes
+  pip:
+    name: pip
+    state: latest
+
+- name: Add a swap file if doesn't exist
+  become: yes
+  script: increase_swap.sh {{ swapsize }}
+  when: swapsize|int > 0
+
+- name: Set timezone
+  become: yes
+  timezone: name={{ time_zone_name | default('UTC') }}

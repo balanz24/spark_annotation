@@ -1,0 +1,12 @@
+
+Configure spark: 5.404435396194458
+Copy input data: 0.08285284042358398
+Create imzml reader: 1.2797741889953613
+Save data form raw ms file: 0.005079507827758789
+Annotation jobs: 192.34116291999817
+
+Configure spark: 4.894123315811157
+Copy input data: 0.11130023002624512
+Create imzml reader: 1.362534999847412
+Save data form raw ms file: 0.008685588836669922
+Annotation jobs: 203.59162950515747

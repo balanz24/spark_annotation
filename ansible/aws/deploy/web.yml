@@ -1,0 +1,32 @@
+---
+
+- name: Deploying SM Platform components code
+  user: ubuntu
+  hosts: web
+
+  pre_tasks:
+    - name: Gather EC2 instance facts
+      ec2_metadata_facts:
+      tags: [always]
+
+  roles:
+    - role: supervisorctl
+      tags: [always]
+
+    - role: sm_api
+      tags: [sm-api]
+
+    - role: sm_graphql
+      tags: [sm-graphql]
+
+    - role: sm_web_app
+      tags: [sm-web-app]
+
+    - role: sm_cluster_autostart_app
+      tags: [sm-cluster-autostart]
+
+    - role: sm_update_daemon
+      tags: [sm-update-daemon]
+
+    - role: sm_lithops_daemon
+      tags: [sm-lithops-daemon]

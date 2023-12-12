@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "target": "es2017",
+    "strict": true,
+    "sourceMap": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "lib": ["ES2015", "ESNext", "ScriptHost"],
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strictPropertyInitialization": false,
+    "noEmit": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./typings"
+    ]
+  }
+}

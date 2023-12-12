@@ -1,0 +1,11 @@
+---
+
+dependencies:
+  - role: elasticsearch
+    tags: [elasticsearch]
+
+  - role: kibana
+    tags: [kibana]
+
+  - role: nginx
+    tags: [nginx]

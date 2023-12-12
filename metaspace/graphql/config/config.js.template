@@ -1,0 +1,76 @@
+/**
+ * Created by intsco on 2/8/17.
+ */
+
+let config = {};
+
+config.services = {};
+/* Internal ad-hoc service with /v1/datasets and /v1/isotopic_patterns endpoints */
+config.services.sm_engine_api_host = "localhost:5123";
+
+config.upload = {};
+config.upload.bucket = '{{ sm_graphql_s3_upload_bucket }}';
+
+config.db = {};
+config.db.host = "{{ sm_graphql_database_host | default('localhost') }}";
+config.db.database = "sm";
+config.db.user = "sm";
+config.db.password = "{{ sm_graphql_database_password }}";
+
+config.elasticsearch = {};
+config.elasticsearch.schema = "http";
+config.elasticsearch.dataset_index = "dataset";
+config.elasticsearch.annotation_index = "annotation";
+config.elasticsearch.host = "localhost";
+config.elasticsearch.port = 9200;
+
+config.rabbitmq = {};
+config.rabbitmq.host = "{{ sm_graphql_rabbitmq_host }}";
+config.rabbitmq.user = "{{ sm_graphql_rabbitmq_user }}";
+config.rabbitmq.password = "{{ sm_graphql_rabbitmq_password }}";
+
+config.redis = {};
+config.redis.host = "{{ sm_graphql_redis_host }}";
+config.redis.port = "{{ sm_graphql_redis_port }}";
+
+config.cookie = {};
+config.cookie.secret = "{{ sm_graphql_cookie_secret }}";
+
+config.google = {};
+config.google.client_id = "{{ sm_graphql_google_client_id }}";
+config.google.client_secret = "{{ sm_graphql_google_client_secret }}";
+config.google.callback_url = "{{ sm_graphql_google_callback_url }}";
+config.google.serpapi_key = "{{ sm_graphql_google_serpapi_key }}";
+
+config.web_public_url = "{{ web_public_url }}";
+
+config.slack = {};
+config.slack.webhook_url = "{{ sm_graphql_slack_webhook_url }}";
+config.slack.channel = "{{ sm_graphql_slack_channel }}";
+
+config.jwt = {};
+config.jwt.secret = "{{ sm_graphql_jwt_secret }}";
+config.jwt.algorithm = "HS256";
+
+config.uppy = {}
+config.uppy.secret = 'secretUppy'
+
+config.sentry = {
+  dsn: "{{ sentry_dsn }}",
+  environment: "{{ stage | replace('/', '_') }}",
+  release: "{{ metaspace_repo_revision }}",
+};
+
+config.aws = {
+  region: "{{ sm_graphql_aws_region }}",
+  credentials: {
+    accessKeyId: "{{ sm_graphql_aws_access_key_id }}",
+    secretAccessKey: "{{ sm_graphql_aws_secret_access_key }}",
+  }
+};
+
+config.features = {{ sm_graphql_features | to_json }};
+
+config.metadataLookups = {{ sm_graphql_metadata_lookups | default({}) | to_json }};
+
+module.exports = config;

@@ -1,0 +1,40 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`annotation/queryFilters applyQueryFilters (colocalization) should transform the args of a request with a colocalizationSamples filter 1`] = `
+Object {
+  "datasetFilter": Object {
+    "ids": "datasetId",
+  },
+  "filter": Object {
+    "colocalizationAlgo": "cosine",
+    "colocalizationSamples": true,
+    "databaseId": 1,
+    "fdrLevel": 0.1,
+    "ion": Array [
+      "H2O+H+",
+      "H3O+H+",
+    ],
+  },
+}
+`;
+
+exports[`annotation/queryFilters applyQueryFilters (colocalization) should transform the args of a request with a colocalizedWith filter 1`] = `
+Object {
+  "datasetFilter": Object {
+    "ids": "datasetId",
+  },
+  "filter": Object {
+    "colocalizationAlgo": "cosine",
+    "colocalizedWith": "H2O+H+",
+    "databaseId": 1,
+    "fdrLevel": 0.1,
+    "ion": Array [
+      "H2O+H+",
+      "H3O+H+",
+      "H4O+H+",
+    ],
+  },
+  "limit": 1000,
+  "offset": 0,
+}
+`;

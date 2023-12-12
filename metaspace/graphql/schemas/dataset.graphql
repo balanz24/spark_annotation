@@ -1,0 +1,464 @@
+type Dataset {
+  id: String!
+  name: String!
+  uploadDT: String!
+  description: String  # JSON-based rich text, in a format defined by tiptap (https://tiptap.scrumpy.io/)
+
+  submitter: DatasetUser!
+  group: DatasetGroup
+  groupApproved: Boolean!
+  principalInvestigator: Person
+  projects: [DatasetProject!]
+
+  polarity: Polarity!
+  ionisationSource: String!
+  analyzer: Analyzer!
+
+  organism: String
+  organismPart: String
+  condition: String
+  growthConditions: String
+  maldiMatrix: String
+
+  configJson: String!
+  scoringModel: ScoringModel
+  # full metadata JSON conforming to schema published at
+  # https://github.com/metaspace2020/metaspace/tree/master/metaspace/metadata
+  roiJson: String
+  metadataJson: String!
+  isPublic: Boolean!
+  isEnriched: Boolean
+  databases: [MolecularDB!]!
+  molDBs: [String!]!  # @deprecated(reason: "Use \"databases\" instead")
+  adducts: [String!]!
+  neutralLosses: [String!]!
+  chemMods: [String!]!
+  acquisitionGeometry: String
+  sizeHash: String
+  metadataType: String!
+
+  status: String
+  statusUpdateDT: String!
+  inputPath: String
+  uploadDateTime: String
+  fdrCounts(inpFdrLvls: [Int!]! = [10], checkLvl: Int! = 10): FdrCounts
+  annotationCounts(inpFdrLvls: [Int!]! = [10]): [AnnotationCounts]
+  opticalImage: String  # @deprecated(reason: "Use Dataset.opticalImages instead")
+  rawOpticalImageUrl: String  # @deprecated(reason: "Use Dataset.opticalImages instead")
+
+  opticalImages(type: OpticalImageType): [OpticalImage!]!
+  opticalImageTransform: [[Float!]!]
+
+  thumbnailOpticalImageUrl: String
+  ionThumbnailUrl: String
+  externalLinks: [ExternalLink!]!
+
+  canEdit: Boolean!
+  canDelete: Boolean!
+  canDownload: Boolean!
+  # JSON string containing:
+  # a list of authors,
+  # the licence (if any) the authors allow the dataset to be used under,
+  # time-limited download links to the dataset files
+  downloadLinkJson: String
+
+  # Additional metadata and output data generated during processing
+  diagnostics: [DatasetDiagnostic!]!
+}
+
+type FdrCounts {
+  databaseId: Int!
+  dbName: String!
+  dbVersion: String!
+  levels: [Float!]!
+  counts: [Float!]!
+}
+
+type FdrSingleCount {
+  level: Int!
+  n: Int!
+}
+type AnnotationCounts {
+  databaseId: Int!
+  dbName: String!
+  dbVersion: String!
+  counts: [FdrSingleCount!]!
+}
+
+type Person {
+  name: String!
+  email: String    # null if current user is not allowed to see
+}
+
+# Datasets' submitter and group are taken from ElasticSearch, which means they can be out of sync with the database.
+# If they overlap with Users/Groups loaded from the database, it causes a lot of problems with the client-side GraphQL cache.
+# To solve this, they're separated into their own data types so that client-side code can cache them differently.
+type DatasetUser {
+  id: ID!
+  name: String
+  email: String
+}
+type DatasetGroup {
+  id: ID!
+  name: String!
+  shortName: String!
+  urlSlug: String  # @deprecated(reason: "Field removed as it cannot be accessed both consistently and efficiently")
+  members: [UserGroup!]  # @deprecated(reason: "Field removed as it cannot be accessed both consistently and efficiently")
+  adminNames: [String!]
+}
+type DatasetProject {
+  id: ID!
+  name: String!
+  publicationStatus: String!
+  isPublic: Boolean  # @deprecated(reason: "Field removed as it cannot be accessed both consistently and efficiently")
+  urlSlug: String  # @deprecated(reason: "Field removed as it cannot be accessed both consistently and efficiently")
+}
+
+enum DiagnosticImageFormat {
+# This should match the list in engine/sm/engine/annotation/diagnostics.py
+  PNG
+  NPY # N-Dimensional Array in NumPy's .npy serialization format
+  JSON
+  PARQUET
+}
+
+type DiagnosticImage {
+  key: String!
+  index: Int   # Optional index, if there are multiple images with the same `key`
+  url: String!
+  format: DiagnosticImageFormat!
+}
+
+type DatasetDiagnostic {
+  id: String!
+  type: String!
+  jobId: Int  # Only present for diagnostics associated with a database, currently unused
+  database: MolecularDB  # Only present for diagnostics associated with a database, currently unused
+  updatedDT: String!
+  data: String! # JSON-serialized. Structure depends on `type`
+  images: [DiagnosticImage!]!
+}
+
+enum DatasetOrderBy {
+  ORDER_BY_DATE
+  ORDER_BY_NAME
+  ORDER_BY_UP_DATE
+  ORDER_BY_DS_SUBMITTER_NAME
+  ORDER_BY_ANNOTATION_COUNTS
+}
+
+# fields of categorical type
+enum DatasetAggField {
+  DF_GROUP,
+  DF_SUBMITTER_NAME,
+  DF_POLARITY,
+  DF_ION_SOURCE,
+  DF_ANALYZER_TYPE,
+  DF_ORGANISM,
+  DF_ORGANISM_PART,
+  DF_CONDITION,
+  DF_GROWTH_CONDITIONS,
+  DF_MALDI_MATRIX,
+  DF_STATUS,
+}
+
+enum JobStatus {
+  QUEUED,
+  ANNOTATING,
+  FINISHED,
+  FAILED,
+}
+
+enum Polarity {
+  POSITIVE
+  NEGATIVE
+}
+
+type Analyzer {
+  type: String!
+  resolvingPower(mz: Float!): Float!
+}
+
+input DatasetFilter {
+  ids: String # list of IDs separated by '|'
+  name: String # substring match
+  submitter: ID
+  group: ID
+  hasGroup: Boolean
+  project: ID
+  polarity: Polarity
+  ionisationSource: String
+  analyzerType: String
+  maldiMatrix: String
+  organism: String
+  organismPart: String
+  condition: String
+  growthConditions: String
+  metadataType: String
+  status: String # list of JobStatus separated by '|'
+  hasAnnotationMatching: AnnotationFilter # Does not support some advanced filters e.g. the colocalization filters
+  opticalImage: Boolean
+}
+
+input DatasetCountPerGroupInput {
+  fields: [DatasetAggField!]!
+  filter: DatasetFilter = {}
+  simpleQuery: String
+}
+
+input PersonInput {
+  name: String!
+  email: String!
+}
+
+input DatasetCreateInput {
+  name: String!
+  inputPath: String!
+  uploadDT: String
+  description: String
+  metadataJson: String!
+  databaseIds: [Int!]
+  molDBs: [String!]  # @deprecated(reason: "This field will be removed. Use \"databaseIds\" instead.")
+  adducts: [String!]!
+  neutralLosses: [String!]
+  chemMods: [String!]
+  ppm: Float
+  numPeaks: Int
+  decoySampleSize: Int
+  analysisVersion: Int
+  computeUnusedMetrics: Boolean
+  scoringModel: String
+
+  submitterId: ID!  # Only for admins
+  groupId: ID
+  projectIds: [ID!] = []
+  principalInvestigator: PersonInput
+  isPublic: Boolean! = true
+}
+
+input DatasetUpdateInput {
+  # Don't supply fields that haven't been changed
+  name: String
+  uploadDT: String
+  metadataJson: String
+  description: String
+  databaseIds: [Int!]
+  molDBs: [String!]  # @deprecated(reason: "This field will be removed. Use \"databaseIds\" instead.")
+  adducts: [String!]
+  neutralLosses: [String!]
+  chemMods: [String!]
+  ppm: Float
+  numPeaks: Int
+  decoySampleSize: Int
+  analysisVersion: Int
+  computeUnusedMetrics: Boolean
+  scoringModel: String
+
+
+  submitterId: ID
+  groupId: ID
+  projectIds: [ID!]
+  principalInvestigator: PersonInput
+  isPublic: Boolean
+  performEnrichment: Boolean
+}
+
+type DatasetCountPerGroupListElement {
+  fieldValues: [String!]!  # corresponding to input fields
+  count: Int!
+}
+
+type DatasetCountPerGroup {
+  counts: [DatasetCountPerGroupListElement]
+}
+
+enum OpticalImageType {
+    SCALED
+    CLIPPED_TO_ION_IMAGE
+}
+
+type OpticalImage {
+    id: String!
+    url: String!
+    type: OpticalImageType!
+    zoom: Float!    # Zoom level for optimal pixel density when fitted to a 1000x500 area
+    width: Int!
+    height: Int!
+    transform: [[Float!]!]!  #3x3 matrix that transforms the optical image to line up with the ion image
+}
+
+type RawOpticalImage {
+    url: String
+    uuid: String
+    transform: [[Float]]
+}
+
+type PixelSpectrum {
+    x: Int
+    y: Int
+    mzs: [Float]
+    ints: [Float]
+}
+
+input AddOpticalImageInput {
+  datasetId: String!
+  imageUrl: String!
+
+  # 3x3 transformation matrix in row-major order
+  # (acting in homogeneous coordinates)
+  transform: [[Float]]!
+}
+
+scalar GeoJsonFeature
+
+input GeoJson {
+  type: String!
+  features: [GeoJsonFeature]
+}
+
+type DatasetRelationship {
+  type: String!
+  id: String!
+  name: String!
+}
+
+
+type Enrichment {
+  name: String
+  id: String
+  termId: Int
+  n: Float
+  observed: Float
+  expected: Float
+  median: Float
+  std: Float
+  pValue: Float
+  qValue: Float
+  annotations: [Annotation]
+}
+
+enum DatasetAction {
+  ANNOTATE
+  UPDATE
+  INDEX
+  DELETE
+}
+enum DatasetActionStage {
+  QUEUED
+  STARTED
+  FINISHED
+  FAILED
+}
+
+type DatasetStatusUpdate {
+  dataset: Dataset
+  relationship: DatasetRelationship
+  action: DatasetAction!
+  stage: DatasetActionStage!
+  isNew: Boolean
+}
+
+type DatasetDeletion {
+  id: String!
+}
+
+type SpectrumImage {
+  image: String
+  maxIntensity: Float!
+}
+
+type Query {
+  dataset(id: String!): Dataset
+
+  allDatasets(orderBy: DatasetOrderBy = ORDER_BY_DATE,
+              sortingOrder: SortingOrder = DESCENDING,
+              filter: DatasetFilter = {}, simpleQuery: String,
+              offset: Int = 0, limit: Int = 10): [Dataset!]
+
+  countDatasets(filter: DatasetFilter = {}, simpleQuery: String): Int!
+
+  countDatasetsPerGroup(query: DatasetCountPerGroupInput!): DatasetCountPerGroup!
+
+  lipidEnrichment(datasetId: String!, molDbId: Int, fdr: Float, offSample: Boolean, pValue: Float): [Enrichment]
+
+  opticalImageUrl(datasetId: String!, zoom: Float = 1): String
+
+  rawOpticalImage(datasetId: String!): RawOpticalImage  # @deprecated(reason: "Use Dataset.opticalImages instead")
+
+  thumbnailImage(datasetId: String!): String  # @deprecated(reason: "Use Dataset.thumbnailOpticalImageUrl instead")
+
+  thumbnailOpticalImageUrl(datasetId: String!): String  # @deprecated(reason: "Use Dataset.thumbnailOpticalImageUrl instead")
+
+  currentUserLastSubmittedDataset: Dataset
+
+  hasImzmlFiles(datasetId: String!): Boolean
+
+  browserImage(datasetId: String!, mzLow: Float!, mzHigh: Float!): SpectrumImage
+
+  pixelSpectrum(datasetId: String!, x: Int!, y: Int!): PixelSpectrum
+}
+
+type Mutation {
+  createDataset(
+    id: String,
+    input: DatasetCreateInput!,
+    priority: Int=0,
+    useLithops: Boolean=true,
+    performEnrichment: Boolean=false
+  ): String!
+
+  # Throws errors of types: "under_review_or_published", "reprocessing_needed", "failed_validation", "dataset_busy"
+  updateDataset(
+    id: String!,
+    input: DatasetUpdateInput!,
+    priority: Int=0,
+    reprocess: Boolean=false,
+    delFirst: Boolean=false,
+    skipValidation: Boolean=false, # ignored for non-admins
+    force: Boolean=false,
+    useLithops: Boolean=true,
+    performEnrichment: Boolean=false
+  ): String!
+
+  # Throws errors of types: "under_review_or_published"
+  deleteDataset(id: String!, force: Boolean=false, priority: Int=0): String!
+
+  # for dev purposes only
+  reprocessDataset(
+    id: String,
+    priority: Int=0,
+    delFirst: Boolean=false,
+    useLithops: Boolean=true,
+    performEnrichment: Boolean=false
+  ): String!
+
+  addOpticalImage(input: AddOpticalImageInput!): String!
+
+  copyRawOpticalImage(originDatasetId: String!, destinyDatasetId: String!): String!
+
+  addRoi(datasetId: String!, geoJson: GeoJson!): String
+
+  deleteOpticalImage(datasetId: String!): String!
+
+  # Links to related websites (publications, etc.)
+  addDatasetExternalLink(datasetId: String!,
+                         provider: String!,
+                         link: String!,
+                         # set replaceExisting to True to delete any previous links to the same provider
+                         replaceExisting: Boolean! = False): Dataset!
+
+  removeDatasetExternalLink(datasetId: String!,
+                            provider: String!,
+                            link: String): Dataset!
+}
+
+type Subscription {
+  datasetStatusUpdated: DatasetStatusUpdate!
+  datasetDeleted: DatasetDeletion!
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}

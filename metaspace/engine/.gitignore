@@ -1,0 +1,14 @@
+conf/*.json
+conf/*.cfg
+!conf/test_config.json
+scripts/sm-env.sh
+data/*/*
+docs/_build
+docs/_static
+docs/_templates
+/tmp/
+/local/
+.dmypy.json
+/typings/
+# Don't include reports from local sci-test runs
+/tests/reports/test-*.csv

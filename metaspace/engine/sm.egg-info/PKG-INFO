@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: sm
+Version: 1.7.0
+Summary: High throughput molecules annotation for imaging mass spectrometry data sets
+Home-page: https://github.com/metaspace2020/metaspace/tree/master/metaspace/engine
+Author: Alexandrov Team, EMBL
+Author-email: vitaly.kovalev@embl.de
+License-File: LICENSE

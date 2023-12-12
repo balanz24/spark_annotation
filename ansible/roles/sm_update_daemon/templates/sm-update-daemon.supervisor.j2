@@ -1,0 +1,12 @@
+# -*- conf -*-
+
+[program:{{ sm_update_daemon_app_name }}]
+process_name = {{ sm_update_daemon_app_name }}
+environment = PATH="{{ miniconda_prefix }}/envs/{{ miniconda_env.name }}/bin"
+directory = {{ sm_home }}
+command = {{ miniconda_prefix }}/envs/{{ miniconda_env.name }}/bin/python scripts/run_sm_daemon.py --name=update
+redirect_stderr = true
+stdout_logfile = {{ sm_home }}/logs/{{ sm_update_daemon_app_name }}.log
+numprocs = 1
+numprocs_start = 8000
+startsecs = 10

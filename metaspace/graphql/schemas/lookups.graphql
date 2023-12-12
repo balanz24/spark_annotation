@@ -1,0 +1,54 @@
+type SubmitterSearchResult {
+  id: ID!
+  name: String!
+}
+
+enum SortingOrder {
+  ASCENDING,
+  DESCENDING
+}
+
+type ChemMod {
+  name: String!
+  chemMod: String!
+}
+type NeutralLoss {
+  name: String!
+  neutralLoss: String!
+}
+
+type Adduct {
+  adduct: String!
+  name: String!
+  charge: Int!
+  hidden: Boolean!
+  default: Boolean!
+}
+
+type ScoringModel {
+  id: Int!
+  name: String!
+  type: String!
+}
+
+type Query {
+  metadataSuggestions(field: String!, query: String!, limit: Int = 10): [String!]!
+
+  submitterSuggestions(query: String!): [SubmitterSearchResult!]!
+
+  chemModSuggestions(query: String): [ChemMod!]!
+
+  neutralLossSuggestions(query: String): [NeutralLoss!]!
+
+  adductSuggestions: [Adduct!]!
+
+  colocalizationAlgos: [ColocalizationAlgo!]!
+
+  scoringModels: [ScoringModel!]!
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}

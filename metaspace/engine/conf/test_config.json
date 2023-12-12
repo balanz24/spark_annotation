@@ -1,0 +1,124 @@
+{
+  "db": {
+    "host": "localhost",
+    "database": "sm_test",
+    "user": "sm",
+    "password": "password"
+  },
+  "elasticsearch": {
+    "index": "sm_test",
+    "dataset_index": "dataset_test",
+    "annotation_index": "annotation_test",
+    "host": "localhost",
+    "port": 9200
+  },
+  "rabbitmq": {
+    "host": "localhost",
+    "user": "sm",
+    "password": "password"
+  },
+  "services": {
+    "web_app_url": "http://localhost:8082",
+    "img_service_url": "http://localhost:4201",
+    "off_sample": "http://localhost:9876/off-sample",
+    "send_email": false,
+    "update_daemon_threads": 1,
+    "colocalization": true,
+    "ion_thumbnail": true
+  },
+  "fs": {
+    "data_path": "/tmp/abc",
+    "spark_data_path": "/tmp/abc",
+    "s3_base_path": ""
+  },
+  "spark": {
+    "master": "local[4]",
+    "executor.memory": "2g",
+    "spark.sql.execution.arrow.enabled": true
+  },
+  "lithops": {
+    "lithops": {
+      "storage_bucket": "lithops_temp",
+      "storage": "localhost",
+      "mode": "localhost",
+      "include_modules": [
+        "engine/sm"
+      ],
+      "data_cleaner": true,
+      "data_limit": false,
+      "workers": 2
+    },
+    "localhost": {},
+    "sm_storage": {
+      "imzml": ["lithops_test", "imzml"],
+      "moldb": ["lithops_test", "moldb"],
+      "centroids": ["lithops_test", "centroids"],
+      "pipeline_cache": ["lithops_test", "pipeline_cache"]
+    }
+  },
+  "slack": {},
+  "isotope_storage": {
+    "path": "/tmp/isotope_storage"
+  },
+  "logs": {
+    "version": 1,
+    "formatters": {
+      "sm": {
+        "format": "%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
+      }
+    },
+    "handlers": {
+      "console_warn": {
+        "class": "logging.StreamHandler",
+        "formatter": "sm",
+        "level": "WARNING"
+      },
+      "console_debug": {
+        "class": "logging.StreamHandler",
+        "formatter": "sm",
+        "level": "DEBUG"
+      },
+      "context_logger": {
+        "class": "sm.engine.utils.log_capture.ContextLogHandler",
+        "formatter": "sm",
+        "level": "INFO"
+      }
+    },
+    "root": {
+      "handlers": [
+        "console_debug",
+        "context_logger"
+      ],
+      "level": "WARNING"
+    },
+    "loggers": {
+      "engine": {
+        "level": "INFO"
+      },
+      "api": {
+        "level": "INFO"
+      },
+      "update-daemon": {
+        "level": "INFO"
+      },
+      "annotate-daemon": {
+        "level": "INFO"
+      }
+    }
+  },
+  "ds_config_defaults": {
+    "adducts": {"+": ["+H", "+Na", "+K"], "-": ["-H", "+Cl"]}
+  },
+  "storage": {
+    "endpoint_url": "http://localhost:9000",
+    "access_key_id": "minioadmin",
+    "secret_access_key": "minioadmin"
+  },
+  "image_storage": {
+    "bucket": "sm-image-storage-test",
+    "raw_img_bucket": "sm-engine-tests"
+  },
+  "imzml_browser_storage": {
+    "bucket": "sm-imzml-browser-test"
+  }
+}

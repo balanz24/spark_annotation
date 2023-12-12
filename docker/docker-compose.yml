@@ -1,0 +1,215 @@
+version: '3.5'
+
+services:
+
+  elasticsearch:
+    build: ./elasticsearch
+    volumes:
+      - "${ESDATA}:/usr/share/elasticsearch/data:z"
+      - "./elasticsearch/:/sm-elasticsearch:ro"
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - sm
+
+  redis:
+    image: redis:4.0.9-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - sm
+
+  rabbitmq:
+    image: rabbitmq:management
+    environment:
+      RABBITMQ_DEFAULT_USER: sm
+      RABBITMQ_DEFAULT_PASS: password
+    ports:
+      - "5672:5672"  # to use rabbitmq from host
+      - "15672:15672" # management interface
+    networks:
+      - sm
+
+  postgres:
+    image: postgres:9.5-alpine
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro" # Timezones are optional, may not work on non-Linux platforms
+      - "/etc/localtime:/etc/localtime:ro"
+      - "./postgres/initdb.d/:/docker-entrypoint-initdb.d:ro"
+      - "${PGDATA}:/pgdata:rw"
+    # user: "$SM_USER" # The postgres image still has issues running as non-root users, so this is disabled for now
+    environment:
+      POSTGRES_USER: sm
+      POSTGRES_PASSWORD: password
+      # The default mount point for pgdata isn't accessible to non-root users, so move it
+      PGDATA: /pgdata
+    ports:
+      - "5432:5432"
+    networks:
+      - sm
+
+  off-sample:
+    image: metaspace2020/off-sample
+    ports:
+      - "9876:9876"
+    networks:
+      - sm
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/sm-engine/Dockerfile
+    command: /sm-engine/start-api.sh
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "${DEV_ROOT}:/opt/dev/metaspace:z"
+      - "${DATA_ROOT}:/opt/data/metaspace:z"
+      - "./sm-engine:/sm-engine:ro"
+    user: "$SM_USER"
+    ports:
+      - "5123:5123"
+    networks:
+      - sm
+    depends_on:
+      - rabbitmq
+      - postgres
+      - elasticsearch
+    # extra_hosts: # Uncomment if graphql is run outside of Docker
+    #  - "graphql:172.17.0.1"
+
+  update-daemon:
+    build:
+      context: ..
+      dockerfile: docker/sm-engine/Dockerfile
+    command: /sm-engine/start-update-daemon.sh
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "${DEV_ROOT}:/opt/dev/metaspace:z"
+      - "${DATA_ROOT}:/opt/data/metaspace:z"
+      - "./sm-engine:/sm-engine:ro"
+    user: "$SM_USER"
+    networks:
+      - sm
+    depends_on:
+      - rabbitmq
+      - postgres
+      - elasticsearch
+    # extra_hosts: # Uncomment if graphql is run outside of Docker
+    #  - "graphql:172.17.0.1"
+
+  lithops-daemon:
+    build:
+      context: ..
+      dockerfile: docker/sm-engine/Dockerfile
+    command: /sm-engine/start-lithops-daemon.sh
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "${DEV_ROOT}:/opt/dev/metaspace:z"
+      - "${DATA_ROOT}:/opt/data/metaspace:z"
+      - "./sm-engine:/sm-engine:ro"
+    user: "$SM_USER"
+    networks:
+      - sm
+    depends_on:
+      - rabbitmq
+      - postgres
+      - elasticsearch
+
+  annotate-daemon:
+    build:
+      context: ..
+      dockerfile: docker/sm-engine/Dockerfile
+    command: /sm-engine/start-annotate-daemon.sh
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "${DEV_ROOT}:/opt/dev/metaspace:z"
+      - "${DATA_ROOT}:/opt/data/metaspace:z"
+      - "./sm-engine:/sm-engine:ro"
+    user: "$SM_USER"
+    environment:
+      SPARK_WORKER_CORES: 4
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 16gb
+    ports:
+      - "4040:4040"
+    networks:
+      - sm
+    depends_on:
+      - rabbitmq
+      - postgres
+      - elasticsearch
+    # extra_hosts: # Uncomment if graphql is run outside of Docker
+    #  - "graphql:172.17.0.1"
+
+  graphql:
+    build:
+      context: ./sm-graphql
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "${DEV_ROOT}:/opt/dev/metaspace:z"
+      - "${DATA_ROOT}:/opt/data/metaspace:z"
+      - "./sm-graphql:/sm-graphql:ro"
+    user: "$SM_USER"
+    ports:
+      - "3010:3010"
+      - "5666:5666"
+      - "4201:4201"
+      - "9229:9229"
+    networks:
+      - sm
+    depends_on:
+      - postgres
+      - rabbitmq
+    # extra_hosts:
+    #  - "api:172.17.0.1"
+
+  webapp:
+    build: ./sm-webapp
+    volumes:
+      - "${DEV_ROOT}:/opt/dev/metaspace:z"
+      - "${DATA_ROOT}:/opt/data/metaspace:z"
+      - "./sm-webapp:/sm-webapp:ro"
+    user: "$SM_USER"
+    networks:
+      - sm
+
+  nginx:
+    build: ./nginx
+    volumes:
+      # To run nginx aganst a prod build of webapp, first build webapp, then uncomment this and
+      # the related section in docker/nginx/config/sites-enabled/default
+      # - "${DEV_ROOT}/metaspace/webapp/dist/:/var/www/webapp:ro"
+      - "${DATA_ROOT}/mol-images/:/var/www/mol-images:z"
+      - "./nginx/:/nginx:ro"
+    ports:
+      - "${WWW_PORT}:8999"
+    networks:
+      - sm
+    # extra_hosts: # Uncomment as needed if api or graphql need to be run outside of Docker
+    #  - "api:172.17.0.1"
+    #  - "graphql:172.17.0.1"
+
+  storage:
+    image: minio/minio:RELEASE.2021-01-16T02-19-44Z
+    entrypoint: sh
+    command: -c 'mkdir -p /data/sm-engine-dev && mkdir -p /data/sm-imzml-browser-dev && /usr/bin/minio server /data'
+    volumes:
+      - "${DATA_ROOT}/s3:/data"
+    ports:
+      - "${STORAGE_PORT}:9000"
+    networks:
+      - sm
+
+networks:
+  sm:
+    driver: bridge

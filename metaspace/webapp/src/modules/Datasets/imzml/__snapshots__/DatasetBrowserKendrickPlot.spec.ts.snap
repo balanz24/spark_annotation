@@ -1,0 +1,8 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`DatasetBrowserKendrickPlot it should match snapshot when empty 1`] = `
+<div
+  class="dataset-browser-kendrick-container"
+  isempty="true"
+/>
+`;

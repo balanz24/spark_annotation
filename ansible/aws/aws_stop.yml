@@ -1,0 +1,29 @@
+---
+
+- name: Stop daemons on master
+  hosts: master
+  user: ubuntu
+
+  tasks:
+    - name: Stop all daemons managed by supervisor on master
+      shell: supervisorctl stop all
+      register: res
+      failed_when: false
+
+    - debug: var=res.stdout
+
+
+- name: Stop SM cluster instances
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    components: ''
+
+  tasks:
+    - shell: >
+        {{ sm_cluster_autostart_python }} aws_instance_manager.py stop
+        --key-name {{ aws_key_name }}
+        --components {{ components }} --stage {{ stage }}
+        {{ ' --credentials-file' if cred_file is defined else '' }}
